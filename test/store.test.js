@@ -9,7 +9,16 @@ test('valid backup round trips saved places, diary and preferences', () => {
   const backup = emptyData();
   backup.area = 'Bangsar'; backup.areas = ['Bangsar']; backup.places = [place]; backup.diary = [meal];
   backup.preferences.likes = 'noodles';
+  backup.recentShops = ['p1'];
   assert.deepEqual(validateBackup(JSON.parse(JSON.stringify(backup))), backup);
+});
+
+test('older version 3 backups gain empty recent shops and invalid history is rejected', () => {
+  const older = emptyData();
+  delete older.recentShops;
+  assert.deepEqual(validateBackup(older).recentShops, []);
+  older.recentShops = [12];
+  assert.throws(() => validateBackup(older), /Backup sections/);
 });
 
 test('backup accepts optional mapped shop category for saved taste', () => {

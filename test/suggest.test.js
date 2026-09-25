@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { candidates, recipeConflict, placeSuitability, mapsUrl, why } from '../src/suggest.js';
+import { candidates, recipeConflict, placeSuitability, mapsUrl, directionsUrl, why } from '../src/suggest.js';
 import { recipes } from '../src/data/recipes.js';
 import { emptyData } from '../src/store.js';
 
@@ -22,6 +22,14 @@ test('another shop excludes the just rejected shop', () => {
   const next = candidates({ mode: 'out', data, livePlaces: live, excluded: [first.id] })[0];
   assert.ok(next);
   assert.notEqual(next.id, first.id);
+});
+
+test('recent reveals change the first pick while keeping a sole match available', () => {
+  const data = emptyData();
+  const first = candidates({ mode: 'out', data, livePlaces: live })[0];
+  data.recentShops = [first.id];
+  assert.notEqual(candidates({ mode: 'out', data, livePlaces: live })[0].id, first.id);
+  assert.equal(candidates({ mode: 'out', data, livePlaces: [first] })[0].id, first.id);
 });
 
 test('recorded taste makes matching shop types more likely', () => {
@@ -107,6 +115,9 @@ test('map links search the chosen shop without a key', () => {
   assert.match(mapsUrl(place), /query=My%20corner%20cafe%20Bangsar/);
   assert.match(mapsUrl(live[0]), /query=Test%20noodle%20shop%203.12%2C101.67/);
   assert.ok(!mapsUrl(live[0]).includes('key='));
+  assert.match(directionsUrl(live[0]), /\/maps\/dir\/\?api=1&destination=3.12%2C101.67/);
+  assert.match(directionsUrl(place), /destination=My%20corner%20cafe%20Bangsar/);
+  assert.ok(!directionsUrl(live[0]).includes('key='));
 });
 
 test('discovery copy only mentions mapped food when this shop has mapped food', () => {

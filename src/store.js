@@ -6,6 +6,7 @@ export const emptyData = () => ({
   areas: [],
   places: [],
   diary: [],
+  recentShops: [],
   preferences: { likes: '', dislikes: '', restrictions: [] },
 });
 
@@ -18,6 +19,7 @@ export function validateBackup(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || value.version !== 3) throw Error('This is not an Eat What? version 3 backup.');
   if (!text(value.area, 120) || !Array.isArray(value.areas) || value.areas.length > 100 || value.areas.some(area => !text(area, 120)) ||
       !Array.isArray(value.places) || value.places.length > 1000 || !Array.isArray(value.diary) || value.diary.length > 5000 ||
+      (value.recentShops !== undefined && (!Array.isArray(value.recentShops) || value.recentShops.length > 8 || value.recentShops.some(shop => !id(shop)))) ||
       !value.preferences || typeof value.preferences !== 'object') throw Error('Backup sections are missing or invalid.');
   for (const place of value.places) {
     if (!place || !id(place.id) || !text(place.name, 160) || !place.name.trim() || !text(place.area, 120) ||
@@ -36,7 +38,7 @@ export function validateBackup(value) {
   }
   const p = value.preferences;
   if (!text(p.likes, 500) || !text(p.dislikes, 500) || !Array.isArray(p.restrictions) || p.restrictions.length > 50 || p.restrictions.some(tag => !text(tag, 500))) throw Error('Preferences are invalid.');
-  return structuredClone(value);
+  return { ...structuredClone(value), recentShops: value.recentShops || [] };
 }
 
 export function loadData() {

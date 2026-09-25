@@ -52,7 +52,8 @@ export function candidates({ mode, data, livePlaces = [], area = '', budget = 0,
     return place ? [place.category, ...split(place.cuisine)].filter(Boolean) : [];
   }));
   const savedIds = new Set(data.places.map(place => place.id));
-  const source = mode === 'home' ? recipes : [...data.places, ...livePlaces.filter(place => !savedIds.has(place.id))];
+  const liveById = new Map(livePlaces.map(place => [place.id, place]));
+  const source = mode === 'home' ? recipes : [...data.places.map(place => ({ ...place, distanceKm: liveById.get(place.id)?.distanceKm ?? null })), ...livePlaces.filter(place => !savedIds.has(place.id))];
   const day = new Date().toISOString().slice(0, 10);
   return source.filter(item => {
     if (excluded.includes(item.id)) return false;
@@ -70,6 +71,10 @@ export function candidates({ mode, data, livePlaces = [], area = '', budget = 0,
     if (mode === 'out' && data.areas.some(pinned => pinned && item.area?.toLowerCase().includes(pinned.toLowerCase()))) score += 2;
     if (mode === 'out' && data.diary.some(meal => meal.placeId === item.id && meal.rating >= 4)) score += 2;
     if (mode === 'out' && item.source === 'OpenStreetMap' && item.status === 'discovered') score += item.category === 'restaurant' || item.category === 'food_court' ? 2 : item.category === 'cafe' ? -2 : 0;
+    if (mode === 'out') {
+      const recentIndex = (data.recentShops || []).indexOf(item.id);
+      if (recentIndex >= 0) score -= recentIndex < 2 ? 16 : recentIndex < 5 ? 9 : 4;
+    }
     if (item.status === 'visited') score += 2;
     if (eaten) score -= different || variety === 'different' ? 14 : 5;
     if (mode === 'home' && item.time <= 20) score += 1;
@@ -117,4 +122,9 @@ export function why(item, { mode, area = '', lowEnergy = false, data, variety = 
 export function mapsUrl(item, area = '') {
   const query = item.lat != null && item.lon != null ? `${item.name} ${item.lat},${item.lon}` : [item.name, item.area || area].filter(Boolean).join(' ');
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+export function directionsUrl(item, area = '') {
+  const destination = item.lat != null && item.lon != null ? `${item.lat},${item.lon}` : [item.name, item.area || area].filter(Boolean).join(' ');
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
 }

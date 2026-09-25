@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mapShop, nearbyUrl, areaPosition, searchShops, shopDetailUrl, shopDetails } from '../src/places.js';
+import { mapShop, nearbyUrl, areaPosition, searchShops, shopDetailUrl, shopDetails, straightLineKm } from '../src/places.js';
 
 const feature = (id, name, cuisine = 'restaurant') => ({ properties: { osm_type: 'N', osm_id: id, osm_value: cuisine, name, city: 'Kuala Lumpur', countrycode: 'my' }, geometry: { coordinates: [101.7, 3.16] } });
 const json = data => ({ ok: true, json: async () => data });
@@ -14,6 +14,9 @@ test('maps real OSM features to shops and ignores unnamed/nonfood data', () => {
   assert.equal(mapShop(feature(123, 'Library', 'library')), null);
   assert.match(nearbyUrl(3.16, 101.7), /osm_tag=amenity%3Arestaurant/);
   assert.throws(() => nearbyUrl(999, 101.7), /invalid/);
+  assert.equal(straightLineKm({ lat: 3.16, lon: 101.7 }, { lat: 3.16, lon: 101.7 }), 0);
+  assert.ok(straightLineKm({ lat: 3.16, lon: 101.7 }, { lat: 3.16, lon: 101.71 }) > 1);
+  assert.equal(straightLineKm(null, { lat: 3.16, lon: 101.7 }), null);
 });
 
 test('typed area is geocoded; nearby results are deduplicated and cached', async () => {
@@ -22,6 +25,7 @@ test('typed area is geocoded; nearby results are deduplicated and cached', async
   assert.deepEqual(await areaPosition('Test Area', fetcher), { lat: 3.16, lon: 101.7 });
   const first = await searchShops({ area: 'Test Area', fetcher });
   assert.equal(first.length, 2);
+  assert.equal(first[0].distanceKm, 0);
   await searchShops({ area: 'Test Area', fetcher });
   assert.equal(calls, 2);
   const other = await searchShops({ area: 'Other Area', fetcher });

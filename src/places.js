@@ -8,7 +8,16 @@ const detailCache = new Map();
 const geocodeCache = new Map();
 const timeout = ms => AbortSignal.timeout(ms);
 
-export function mapShop(feature, area = '') {
+export function straightLineKm(from, to) {
+  if (![from?.lat, from?.lon, to?.lat, to?.lon].every(Number.isFinite)) return null;
+  const radians = degrees => degrees * Math.PI / 180;
+  const latitude = radians(to.lat - from.lat);
+  const longitude = radians(to.lon - from.lon);
+  const arc = Math.sin(latitude / 2) ** 2 + Math.cos(radians(from.lat)) * Math.cos(radians(to.lat)) * Math.sin(longitude / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(arc)));
+}
+
+export function mapShop(feature, area = '', origin = null) {
   const p = feature?.properties || {};
   const [lon, lat] = feature?.geometry?.coordinates || [];
   if (!p.name || !['N', 'W', 'R'].includes(p.osm_type) || !Number.isSafeInteger(p.osm_id) || !Number.isFinite(lat) || !Number.isFinite(lon) || !['restaurant', 'fast_food', 'cafe', 'food_court'].includes(p.osm_value)) return null;
@@ -17,6 +26,7 @@ export function mapShop(feature, area = '') {
     area: area || p.locality || p.district || p.city || '', cuisine: '', dishes: '', price: '', notes: '',
     status: 'discovered', pinned: false, source: 'OpenStreetMap', lat, lon, diet: [],
     category: p.osm_value, address: [p.street, p.city].filter(Boolean).join(', '), countryCode: String(p.countrycode || '').toUpperCase(),
+    distanceKm: origin ? straightLineKm(origin, { lat, lon }) : null,
   };
 }
 
@@ -66,7 +76,7 @@ export async function searchShops({ area = '', positionProvider = currentPositio
   const raw = (await response.json()).features;
   if (!Array.isArray(raw)) throw Error('Nearby shops could not be read. Try again shortly.');
   const seen = new Set();
-  const places = raw.map(feature => mapShop(feature, area.trim())).filter(place => {
+  const places = raw.map(feature => mapShop(feature, area.trim(), point)).filter(place => {
     if (!place || seen.has(place.id)) return false;
     seen.add(place.id); return true;
   });
