@@ -4,10 +4,11 @@ const split = value => String(value || '').toLowerCase().split(/[,;\n]+/).map(x 
 const includes = (haystack, needles) => needles.some(word => haystack.includes(word));
 const meat = ['chicken', 'beef', 'pork', 'lamb', 'fish', 'sardine', 'shrimp', 'prawn', 'seafood', 'duck', 'bacon', 'ham', 'lard', 'gelatin'];
 const animal = [...meat, 'egg', 'milk', 'cheese', 'butter', 'cream', 'honey'];
-const words = item => `${item.name} ${item.category?.replaceAll('_', ' ') || ''} ${item.cuisine || ''} ${item.dishes || ''} ${item.notes || ''} ${(item.contains || []).join(' ')}`.toLowerCase();
+const words = item => `${item.name} ${item.category?.replaceAll('_', ' ') || ''} ${item.cuisine || ''} ${item.dishes || ''} ${item.notes || ''} ${(item.contains || []).join(' ')} ${(item.details?.foodTypes || []).join(' ')} ${(item.details?.mappedDishes || []).join(' ')}`.toLowerCase();
 function hash(text) { let value = 2166136261; for (const char of text) value = Math.imul(value ^ char.charCodeAt(0), 16777619); return value >>> 0; }
+const statedFood = text => text.toLowerCase().replace(/\b(?:no|without)\s+(?:pork|beef|peanuts?|seafood)\b|\b(?:pork|beef|peanut|seafood)[ -]free\b/g, '');
 const knownFoodConflict = (text, rule) => {
-  const stated = text.toLowerCase().replace(/\b(?:no|without)\s+(?:pork|beef|peanuts?|seafood)\b|\b(?:pork|beef|peanut|seafood)[ -]free\b/g, '');
+  const stated = statedFood(text);
   if (rule === 'vegetarian') return meat.some(food => new RegExp(`\\b${food}\\b`).test(stated));
   if (rule === 'vegan') return animal.some(food => new RegExp(`\\b${food}\\b`).test(stated));
   if (rule === 'halal') return /\b(?:pork|bacon|ham|lard|pig|alcohol|beer|wine|liquor)\b/.test(stated);
@@ -40,6 +41,10 @@ export function placeSuitability(item, restrictions = []) {
   return { conflict: false, unverified: item.source === 'OpenStreetMap' || rules.some(rule => !tags.includes(rule)) };
 }
 
+export function placeMatchesDislike(item, dislikes = '') {
+  return includes(statedFood(words(item)), split(dislikes));
+}
+
 export function candidates({ mode, data, livePlaces = [], area = '', budget = 0, time = 60, lowEnergy = false, different = false, variety = 'open', group = [], excluded = [] }) {
   const restrictions = group.length ? [...new Set(group.flatMap(person => person.restrictions || []))] : data.preferences.restrictions;
   const dislikes = group.length ? group.flatMap(person => split(person.dislikes)) : split(data.preferences.dislikes);
@@ -64,7 +69,7 @@ export function candidates({ mode, data, livePlaces = [], area = '', budget = 0,
       if (limit && item.price && Number(item.price) > limit) return false;
       if (placeSuitability(item, restrictions).conflict) return false;
     }
-    return !includes(words(item), dislikes);
+    return !includes(statedFood(words(item)), dislikes);
   }).map(item => {
     const eaten = recent.some(meal => meal.placeId === item.id || meal.recipeId === item.id || meal.name.toLowerCase() === item.name.toLowerCase());
     let score = (item.pinned ? 5 : 0) + (item.status === 'wishlist' ? 3 : 0) + (includes(words(item), likes) ? 6 : 0);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { candidates, recipeConflict, placeSuitability, mapsUrl, directionsUrl, why } from '../src/suggest.js';
+import { candidates, recipeConflict, placeSuitability, placeMatchesDislike, mapsUrl, directionsUrl, why } from '../src/suggest.js';
 import { recipes } from '../src/data/recipes.js';
 import { emptyData } from '../src/store.js';
 
@@ -89,6 +89,11 @@ test('known dietary conflicts are excluded, unknown shop suitability is unverifi
   assert.ok(items.length);
   assert.ok(items.every(item => !placeSuitability(item, group[0].restrictions).conflict));
   assert.ok(!items.some(item => item.name === 'Chicken place'));
+  const mappedPork = { ...live[0], details: { foodTypes: ['malaysian'], mappedDishes: ['pork noodles'] } };
+  assert.equal(placeSuitability(mappedPork, ['no pork']).conflict, true);
+  assert.equal(placeMatchesDislike(mappedPork, 'pork'), true);
+  assert.equal(placeMatchesDislike(mappedPork, 'mushrooms'), false);
+  assert.equal(placeMatchesDislike({ ...live[0], name: 'No pork café' }, 'pork'), false);
 });
 
 test('halal and no-pork preferences skip known conflicts without treating halal tags as conflicts', () => {

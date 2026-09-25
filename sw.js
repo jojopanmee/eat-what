@@ -1,4 +1,4 @@
-const CACHE='eat-what-static-v16';
+const CACHE='eat-what-static-v17';
 const FILES=['./','./index.html','./privacy.html','./terms.html','./src/app.js','./src/style.css','./src/store.js','./src/suggest.js','./src/places.js','./src/photos.js','./src/hours.js','./src/data/recipes.js','./assets/food-sheet.webp','./assets/shopfront.webp','./assets/shop-vignettes.webp','./assets/favicon.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('eat-what-static-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()))});
